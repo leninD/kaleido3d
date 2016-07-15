@@ -3,11 +3,16 @@
 #include <Core/File.h>
 #include <Core/LogUtil.h>
 #include <Core/Image.h>
+#include <Core/App.h>
 #include <Core/Variant.h>
 #include "ObjectMesh.h"
 
 #ifdef USE_TBB_MALLOC
 #include <tbb/scalable_allocator.h>
+#endif
+
+#if K3DPLATFORM_OS_ANDROID
+#include <android/asset_manager.h>
 #endif
 
 #include <fstream>
@@ -17,7 +22,8 @@
 #include <strsafe.h>
 #endif
 
-namespace k3d {
+namespace k3d
+{
 
 	kString AssetManager::s_envAssetPath;
 
@@ -227,6 +233,7 @@ namespace k3d {
 
 	AssetManager::SpIODevice  AssetManager::OpenAsset(const kchar *assetPath, IOFlag flag, bool fastMode)
 	{
+		__android_internal::g_App->m_Activity->assetManager;
 		kString rawPath = AssetPath(assetPath);
 		SpIODevice fileObj = nullptr;
 		if (fastMode) 

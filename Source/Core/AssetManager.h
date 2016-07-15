@@ -1,5 +1,5 @@
-#ifndef __k3dk3dAssetManager_h__
-#define __k3dk3dAssetManager_h__
+#ifndef __AssetManager_h__
+#define __AssetManager_h__
 #pragma once
 
 #include <KTL/Singleton.hpp>
@@ -9,7 +9,8 @@
 #include <memory>
 
 
-namespace k3d {
+namespace k3d
+{
 	class	Image;
 	class	Shader;
 	struct	ObjectLoadListener;

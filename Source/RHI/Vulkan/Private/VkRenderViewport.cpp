@@ -102,7 +102,7 @@ void RenderViewport::AllocateRenderTargets(rhi::GfxSetting & gfxSetting)
 		for (uint32_t i = 0; i < m_NumBufferCount; ++i)
 		{
 			VkImage colorImage = m_pSwapChain->GetBackImage(i);
-			auto& colorImageInfo = ImageViewInfo::CreateColorImageView(GetRawDevice(), colorFmt, colorImage);
+			auto colorImageInfo = ImageViewInfo::CreateColorImageView(GetRawDevice(), colorFmt, colorImage);
 			VKLOG(Info, "swapchain imageView created . (0x%0x).", colorImageInfo.first);
 			auto colorTex = Texture::CreateFromSwapChain(colorImage, colorImageInfo.first, colorImageInfo.second, GetDevice());
 			VkFormat depthFormat = g_FormatTable[gfxSetting.DepthStencilFormat];

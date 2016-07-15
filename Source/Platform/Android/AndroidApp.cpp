@@ -233,7 +233,7 @@ namespace k3d
 
 namespace __android_internal
 {
-
+    k3d::App* g_App = nullptr;
     static void appDestroy(k3d::App *android_app);
 
     static void* appEntry(void *param) {
@@ -264,6 +264,7 @@ namespace __android_internal
             k3d::App *androidApp,
             void *savedState, size_t savedStateSize)
     {
+        g_App = androidApp;
         androidApp->m_Activity = activity;
         if (savedState != NULL) {
             androidApp->m_SavedState = malloc(savedStateSize);

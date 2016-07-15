@@ -35,6 +35,8 @@ namespace __android_internal
 	void* 			loadLibrary(const char* libraryName, JNIEnv* env, jobject& ObjectActivityInfo);
 	k3d::App*		createApplication(ANativeActivity *, k3d::App *, void *savedState,
 									  size_t savedStateSize);
+
+	extern k3d::App*g_App;
 }
 #endif
 
