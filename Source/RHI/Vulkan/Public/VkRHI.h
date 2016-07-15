@@ -198,6 +198,7 @@ public:
 	//VkQueue const &				GetRawQueue() const { return m_pDevice->GetRawDeviceQueue(); }
 
 	Device::Ptr const			GetDevice() const { return m_pDevice; }
+	SpCmdQueue const&			GetImmCmdQueue() const { return m_pDevice->GetDefaultCmdQueue(); }
 private:
 	Device::Ptr					m_pDevice;
 };
@@ -346,7 +347,7 @@ public:
 	typedef Buffer * Ptr;
 	explicit					Buffer(Device::Ptr pDevice) : Resource(pDevice) {}
 								Buffer(Device::Ptr pDevice, rhi::ResourceDesc const & desc);
-								~Buffer() override;
+	virtual						~Buffer();
 
 	void						Create(size_t size);
 
@@ -357,6 +358,15 @@ private:
 	VkBufferView				m_BufferView = VK_NULL_HANDLE;
 	VkBuffer					m_Buffer = VK_NULL_HANDLE;
 	VkBufferUsageFlags  		m_Usage = 0;
+	VkMemoryPropertyFlags		m_MemoryBits = 0;
+};
+
+class StageBuffer : public Buffer
+{
+public:
+	StageBuffer(Device::Ptr pDevice, rhi::ResourceDesc const & desc);
+	~StageBuffer() override;
+
 };
 
 class Texture : public Resource
@@ -399,6 +409,7 @@ private:
 	ImageInfo  					m_ImageInfo;
 	VkImage						m_Image = VK_NULL_HANDLE;
 	rhi::EResourceState			m_UsageState = rhi::ERS_Common;
+	VkImageMemoryBarrier		m_Barrier;
 	bool						m_SelfOwn = true;
 };
 
@@ -541,7 +552,7 @@ public:
 	virtual				~CommandContext();
 
 	void				Detach(rhi::IDevice *) override;
-	void				CopyBuffer(rhi::IGpuResource& Dest, rhi::IGpuResource& Src) override;
+	void				CopyBuffer(rhi::IGpuResource& Dest, rhi::IGpuResource& Src, ::k3d::DynArray<rhi::BufferRegion> const& Regions) override;
 
 	/**
 	 * @brief	submit command buffer to queue and wait for scheduling.
@@ -628,25 +639,11 @@ public:
 		VkFence fence, 
 		const std::vector<VkSemaphore>& signalSemaphores);
 
-	void Submit(const std::vector<VkSubmitInfo>& submits, VkFence fence);
-
-	void Present(
-		const std::vector<VkSemaphore>& waitSemaphores, 
-		const std::vector<VkSwapchainKHR>& swapChains,
-		const std::vector<uint32>& imageIndices);
-
-	void Present(
-		VkSemaphore waitSemaphore,
-		VkSwapchainKHR swapChain, 
-		uint32 imageIndex);
-
-	void Present(
-		VkSemaphore waitSemaphore, 
-		PtrSwapChain& swapChainRef, 
-		uint32 imageIndex);
-
-
+	VkResult Submit(const std::vector<VkSubmitInfo>& submits, VkFence fence);
+	
 	void WaitIdle();
+
+	VkQueue GetNativeHandle() const { return m_Queue; }
 
 protected:
 	void Initialize(VkQueueFlags queueTypes, uint32 queueFamilyIndex, uint32 queueIndex);
@@ -673,7 +670,7 @@ public:
 
 	uint32									GetPresentQueueFamilyIndex() const { return m_SelectedPresentQueueFamilyIndex; }
 	uint32									AcquireNextImage(PtrSemaphore presentSemaphore, PtrFence pFence);
-	void									Present(uint32 imageIndex, PtrSemaphore renderingFinishSemaphore);
+	VkResult								Present(uint32 imageIndex, PtrSemaphore renderingFinishSemaphore);
 	uint32									GetBackBufferCount() const { return m_ReserveBackBufferCount; }
 	
 	VkSwapchainKHR							GetSwapChain() const { return m_SwapChain; }
@@ -873,33 +870,32 @@ public:
 	}
 
 protected:
-	void								InitWithDesc(rhi::PipelineDesc const & desc);
-	void								Destroy();
+	void											InitWithDesc(rhi::PipelineDesc const & desc);
+	void											Destroy();
 
-	friend class						CommandContext;
+	friend class									CommandContext;
 
-	VkPipeline							m_Pipeline;
-	VkPipelineCache						m_PipelineCache;
+	VkPipeline										m_Pipeline;
+	VkPipelineCache									m_PipelineCache;
 	union 
 	{
-		VkGraphicsPipelineCreateInfo	m_GfxCreateInfo;
-		VkComputePipelineCreateInfo		m_CptCreateInfo;
+		VkGraphicsPipelineCreateInfo				m_GfxCreateInfo;
+		VkComputePipelineCreateInfo					m_CptCreateInfo;
 	};
-	VkRenderPass						m_RenderPass;
+	VkRenderPass									m_RenderPass;
 
 private:
-	std::vector<VkPipelineShaderStageCreateInfo> m_ShaderStageInfos;
-	VkPipelineInputAssemblyStateCreateInfo	m_InputAssemblyState;
-	VkPipelineRasterizationStateCreateInfo	m_RasterizationState;
-	VkPipelineColorBlendStateCreateInfo		m_ColorBlendState;
-	VkPipelineDepthStencilStateCreateInfo	m_DepthStencilState;
-	VkPipelineViewportStateCreateInfo		m_ViewportState;
-	VkPipelineMultisampleStateCreateInfo	m_MultisampleState;
-	VkPipelineVertexInputStateCreateInfo	m_VertexInputState;
+	std::vector<VkPipelineShaderStageCreateInfo>	m_ShaderStageInfos;
+	VkPipelineInputAssemblyStateCreateInfo			m_InputAssemblyState;
+	VkPipelineRasterizationStateCreateInfo			m_RasterizationState;
+	VkPipelineColorBlendStateCreateInfo				m_ColorBlendState;
+	VkPipelineDepthStencilStateCreateInfo			m_DepthStencilState;
+	VkPipelineViewportStateCreateInfo				m_ViewportState;
+	VkPipelineMultisampleStateCreateInfo			m_MultisampleState;
+	VkPipelineVertexInputStateCreateInfo			m_VertexInputState;
 	std::vector<VkVertexInputBindingDescription>	m_BindingDescriptions;
 	std::vector<VkVertexInputAttributeDescription>	m_AttributeDescriptions;
-
-	PipelineLayout *						m_PipelineLayout;
+	PipelineLayout *								m_PipelineLayout;
 };
 
 class PipelineLayout : public rhi::IPipelineLayout, public DeviceChild

@@ -39,14 +39,15 @@ void RenderViewport::PrepareNextFrame()
 {
 	VKRHI_METHOD_TRACE
 	m_CurFrameId = m_pSwapChain->AcquireNextImage(m_PresentSemaphore, nullptr);
-	VKLOG(Info, "Current Frame Id = %d.", m_CurFrameId);
+	VKLOG(Info, "Current Frame Id = %d. acquiring (0x%0x)", m_CurFrameId, m_PresentSemaphore->GetNativeHandle());
 }
 
 bool RenderViewport::Present(bool vSync)
 {
 	VKRHI_METHOD_TRACE
-	m_pSwapChain->Present(m_CurFrameId, m_RenderSemaphore);
-	return false;
+	VKLOG(Info, "present ----- renderSemaphore (0x%0x)", m_RenderSemaphore->GetNativeHandle());
+	VkResult result = m_pSwapChain->Present(m_CurFrameId, m_RenderSemaphore);
+	return result==VK_SUCCESS;
 }
 
 rhi::IRenderTarget * RenderViewport::GetRenderTarget(uint32 index)
@@ -96,6 +97,61 @@ void RenderViewport::AllocateRenderTargets(rhi::GfxSetting & gfxSetting)
 {
 	if (m_RenderPass)
 	{
+		VkFormat depthFormat = g_FormatTable[gfxSetting.DepthStencilFormat];
+
+		VkImage depthImage;
+		VkImageCreateInfo image = {};
+		image.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		image.imageType = VK_IMAGE_TYPE_2D;
+		image.format = depthFormat;
+		// Use example's height and width
+		image.extent = { gfxSetting.Width, gfxSetting.Height, 1 };
+		image.mipLevels = 1;
+		image.arrayLayers = 1;
+		image.samples = VK_SAMPLE_COUNT_1_BIT;
+		image.tiling = VK_IMAGE_TILING_OPTIMAL;
+		image.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		image.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		vkCreateImage(GetRawDevice(), &image, nullptr, &depthImage);
+
+
+		VkDeviceMemory depthMem;
+		// Allocate memory for the image (device local) and bind it to our image
+		VkMemoryAllocateInfo memAlloc = {};
+		memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		VkMemoryRequirements memReqs;
+		vkGetImageMemoryRequirements(GetRawDevice(), depthImage, &memReqs);
+		memAlloc.allocationSize = memReqs.size;
+		GetDevice()->FindMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &memAlloc.memoryTypeIndex);
+		vkAllocateMemory(GetRawDevice(), &memAlloc, nullptr, &depthMem);
+		vkBindImageMemory(GetRawDevice(), depthImage, depthMem, 0);
+
+		auto layoutCmd = static_cast<CommandContext*>(GetDevice()->NewCommandContext(rhi::ECMD_Graphics));
+		ImageMemoryBarrierParams params(depthImage,
+			VK_IMAGE_LAYOUT_UNDEFINED,
+			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+		layoutCmd->Begin();
+		params.MipLevelCount(1).AspectMask(VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT).LayerCount(1);
+		layoutCmd->PipelineBarrierImageMemory(params);
+		layoutCmd->End();
+		layoutCmd->Execute(false);
+
+		VkImageView depthView;
+		VkImageViewCreateInfo depthStencilView = {};
+		depthStencilView.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		depthStencilView.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		depthStencilView.format = depthFormat;
+		depthStencilView.subresourceRange = {};
+		depthStencilView.subresourceRange.aspectMask = DetermineAspectMask(depthFormat);
+		depthStencilView.subresourceRange.baseMipLevel = 0;
+		depthStencilView.subresourceRange.levelCount = 1;
+		depthStencilView.subresourceRange.baseArrayLayer = 0;
+		depthStencilView.subresourceRange.layerCount = 1;
+		depthStencilView.image = depthImage;
+		vkCreateImageView(GetRawDevice(), &depthStencilView, nullptr, &depthView);
+
 		m_RenderTargets.resize(m_NumBufferCount);
 		RenderpassOptions option = m_RenderPass->GetOption();
 		VkFormat colorFmt = option.GetAttachments()[0].GetFormat();
@@ -105,49 +161,13 @@ void RenderViewport::AllocateRenderTargets(rhi::GfxSetting & gfxSetting)
 			auto colorImageInfo = ImageViewInfo::CreateColorImageView(GetRawDevice(), colorFmt, colorImage);
 			VKLOG(Info, "swapchain imageView created . (0x%0x).", colorImageInfo.first);
 			auto colorTex = Texture::CreateFromSwapChain(colorImage, colorImageInfo.first, colorImageInfo.second, GetDevice());
-			VkFormat depthFormat = g_FormatTable[gfxSetting.DepthStencilFormat];
-
-			VkImage depthImage;
-			VkImageCreateInfo image = {};
-			image.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-			image.imageType = VK_IMAGE_TYPE_2D;
-			image.format = depthFormat;
-			// Use example's height and width
-			image.extent = { gfxSetting.Width, gfxSetting.Height, 1 };
-			image.mipLevels = 1;
-			image.arrayLayers = 1;
-			image.samples = VK_SAMPLE_COUNT_1_BIT;
-			image.tiling = VK_IMAGE_TILING_OPTIMAL;
-			image.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-			image.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			vkCreateImage(GetRawDevice(), &image, nullptr, &depthImage);
-
-
-			VkDeviceMemory depthMem;
-			// Allocate memory for the image (device local) and bind it to our image
-			VkMemoryAllocateInfo memAlloc = {};
-			memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			VkMemoryRequirements memReqs;
-			vkGetImageMemoryRequirements(GetRawDevice(), depthImage, &memReqs);
-			memAlloc.allocationSize = memReqs.size;
-			GetDevice()->FindMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &memAlloc.memoryTypeIndex);
-			vkAllocateMemory(GetRawDevice(), &memAlloc, nullptr, &depthMem);
-			vkBindImageMemory(GetRawDevice(), depthImage, depthMem, 0);
-
-
-			VkImageView depthView;
-			VkImageViewCreateInfo depthStencilView = {};
-			depthStencilView.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-			depthStencilView.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			depthStencilView.format = depthFormat;
-			depthStencilView.subresourceRange = {};
-			depthStencilView.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-			depthStencilView.subresourceRange.baseMipLevel = 0;
-			depthStencilView.subresourceRange.levelCount = 1;
-			depthStencilView.subresourceRange.baseArrayLayer = 0;
-			depthStencilView.subresourceRange.layerCount = 1;
-			depthStencilView.image = depthImage;
-			vkCreateImageView(GetRawDevice(), &depthStencilView, nullptr, &depthView);
+			
+			//vkTools::setImageLayout(
+			//	setupCmdBuffer,
+			//	depthStencil.image,
+			//	VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+			//	VK_IMAGE_LAYOUT_UNDEFINED,
+			//	VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
 			FrameBuffer::Attachment colorAttach(colorImageInfo.first);
 			FrameBuffer::Attachment depthAttach(depthView);

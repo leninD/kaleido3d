@@ -47,7 +47,7 @@ namespace k3d
 
     void *App::OnSaveInstanceState(ANativeActivity *activity, size_t *outLen) {
         App *app = RetrieveApp(activity);
-        app->WriteCmd(APP_CMD_SAVE_STATE);
+        //app->WriteCmd(APP_CMD_SAVE_STATE);
     }
 
     void App::OnWindowFocusChanged(ANativeActivity *activity, int focused) {

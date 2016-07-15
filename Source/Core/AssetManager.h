@@ -22,6 +22,13 @@ namespace k3d
 		std::vector<kByte> Bytes;
 	};
 
+	struct IAsset
+	{
+		virtual ~IAsset() {}
+		virtual uint64	GetLength() = 0;
+		virtual const void*	GetBuffer() = 0;
+	};
+
 	/// AssetManager
 	/// **Support Asynchronic Reader
 	/// Search Path Supported
@@ -94,7 +101,6 @@ namespace k3d
 		typedef std::unordered_map<string, std::shared_ptr<Image> > MapImage;
 		typedef MapImage::iterator MapImageIter;
 
-
 		AssetManager();
 
 	public:
@@ -102,9 +108,9 @@ namespace k3d
 
 		static SpIODevice		OpenAsset(const kchar * assetPath, IOFlag openFlag = IORead, bool fast = false);
 
-		static kString		AssetPath(const kchar * assetRelativePath);
+		static kString			AssetPath(const kchar * assetRelativePath);
 
-
+        static IAsset * 		Open(const char* path);
 	protected:
 		static	kString	 s_envAssetPath;
 

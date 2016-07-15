@@ -233,7 +233,6 @@ namespace k3d
 
 	AssetManager::SpIODevice  AssetManager::OpenAsset(const kchar *assetPath, IOFlag flag, bool fastMode)
 	{
-		__android_internal::g_App->m_Activity->assetManager;
 		kString rawPath = AssetPath(assetPath);
 		SpIODevice fileObj = nullptr;
 		if (fastMode) 
@@ -258,6 +257,61 @@ namespace k3d
 			return assetRelativePath;
 		}
 		return s_envAssetPath + assetRelativePath;
+	}
+
+	class MemmapedAsset : public IAsset
+	{
+	public:
+		MemmapedAsset(const char * path)
+		{
+			m_File = std::make_shared<MemMapFile>();
+			m_File->Open(path, IORead);
+		}
+
+		~MemmapedAsset() override {}
+
+		uint64 GetLength() override
+		{	return m_File->GetSize();	}
+
+		const void * GetBuffer() override
+		{	return m_File->FileData(); }
+
+	private:
+		std::shared_ptr<MemMapFile> m_File;
+	};
+
+#if K3DPLATFORM_OS_ANDROID
+	class AndroidAsset : public IAsset
+	{
+	public:
+		AndroidAsset(AAsset * asset) : m_Asset(asset) {}
+		~AndroidAsset() override { if(m_Asset) AAsset_close(m_Asset); }
+
+		uint64 		GetLength() override { return AAsset_getLength(m_Asset); }
+		const void* GetBuffer() override { return AAsset_getBuffer(m_Asset); }
+
+	private:
+		AAsset	* m_Asset;
+	};
+#endif
+
+	IAsset *AssetManager::Open(const char *path)
+	{
+		if(strncmp(path, "asset://", 8)==0) {
+#if K3DPLATFORM_OS_ANDROID
+			AAssetManager* mgr = __android_internal::g_App->m_Activity->assetManager;
+			std::string relpath(path);
+			relpath = relpath.substr(8, relpath.size() - 8);
+			AAsset * asset = AAssetManager_open(mgr, relpath.c_str(), AASSET_MODE_STREAMING);
+			K3D_ASSERT(asset!= nullptr);
+			return new AndroidAsset(asset);
+#else
+            std::string relpath(path);
+			relpath = "../../Data/" + relpath.substr(8, relpath.size() - 8);
+			return new MemmapedAsset(relpath.c_str());
+#endif
+		}
+		return nullptr;
 	}
 
 }

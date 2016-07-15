@@ -223,7 +223,7 @@ namespace rhi
 		virtual ~ICommandContext() {}
 
 		virtual void Detach(IDevice *) = 0;
-		virtual void CopyBuffer(IGpuResource& Dest, IGpuResource& Src) = 0;
+		virtual void CopyBuffer(IGpuResource& Dest, IGpuResource& Src, ::k3d::DynArray<BufferRegion> const& Regions) = 0;
 		virtual void Execute(bool Wait) = 0;
 		virtual void Reset() = 0;
 		virtual void TransitionResourceBarrier(IGpuResource * resource, EResourceState srcState, EResourceState dstState) = 0;

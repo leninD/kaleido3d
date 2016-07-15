@@ -23,6 +23,29 @@ Buffer::Buffer(Device::Ptr pDevice, rhi::ResourceDesc const &desc)
 : Resource(pDevice)
 {
 	m_Usage = g_ResourceViewFlag[desc.ViewType];
+	
+	if (desc.CreationFlag & rhi::EGRCF_TransferSrc)
+	{
+		m_Usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	}
+	
+	if (desc.CreationFlag & rhi::EGRCF_TransferDst) 
+	{
+		m_Usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	}
+
+	if (desc.Flag & rhi::EGRAF_HostVisible) 
+	{
+		m_MemoryBits |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	}
+	if (desc.Flag & rhi::EGRAF_DeviceVisible)
+	{
+		m_MemoryBits |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	}
+	if (desc.Flag & rhi::EGRAF_HostCoherent)
+	{
+		m_MemoryBits |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	}
 	Create(desc.Size);
 }
 
@@ -53,8 +76,7 @@ void Buffer::Create(size_t size)
 	createInfo.queueFamilyIndexCount = 0;
 	createInfo.pQueueFamilyIndices = nullptr;
 	K3D_VK_VERIFY(vkCreateBuffer(GetRawDevice(), &createInfo, nullptr, &m_Buffer));
-
-	ResourceManager::Allocation alloc = GetDevice()->GetMemoryManager()->AllocateBuffer(m_Buffer, false, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+	ResourceManager::Allocation alloc = GetDevice()->GetMemoryManager()->AllocateBuffer(m_Buffer, false, m_MemoryBits);
 	K3D_ASSERT(VK_NULL_HANDLE != alloc.Memory);
 
 	m_DeviceMem = alloc.Memory;
@@ -66,6 +88,15 @@ void Buffer::Create(size_t size)
 	m_BufferInfo.range = m_Size;
 	
 	K3D_VK_VERIFY(vkBindBufferMemory(GetRawDevice(), m_Buffer, m_DeviceMem, m_AllocationOffset));
+}
+
+StageBuffer::StageBuffer(Device::Ptr pDevice, rhi::ResourceDesc const & desc)
+	: Buffer(pDevice, desc)
+{
+}
+
+StageBuffer::~StageBuffer()
+{
 }
 
 Texture::Texture(Device::Ptr pDevice, rhi::TextureDesc const &desc)

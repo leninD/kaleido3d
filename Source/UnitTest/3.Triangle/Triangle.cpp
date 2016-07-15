@@ -1,6 +1,7 @@
 #include <Kaleido3D.h>
 #include <Core/App.h>
 #include <Core/File.h>
+#include <Core/AssetManager.h>
 #include <Core/LogUtil.h>
 #include <Core/Message.h>
 #include <RHI/IRHI.h>
@@ -120,23 +121,45 @@ private:
 
 void TriangleMesh::Upload() 
 {
-	rhi::ResourceDesc desc;
-	desc.ViewType = rhi::EGpuMemViewType::EGVT_VBV;
-	desc.Size = m_szVBuf;
-	vbuf = m_pDevice->NewGpuResource(desc);
-	void * ptr = vbuf->Map(0, m_szVBuf);
+	// create stage buffers
+	rhi::ResourceDesc stageDesc;
+	stageDesc.ViewType = rhi::EGpuMemViewType::EGVT_Undefined;
+	stageDesc.CreationFlag = rhi::EGpuResourceCreationFlag::EGRCF_TransferSrc;
+	stageDesc.Flag = (rhi::EGpuResourceAccessFlag) (rhi::EGpuResourceAccessFlag::EGRAF_HostCoherent | rhi::EGpuResourceAccessFlag::EGRAF_HostVisible);
+	stageDesc.Size = m_szVBuf;
+	rhi::IGpuResource* vStageBuf = m_pDevice->NewGpuResource(stageDesc);
+	void * ptr = vStageBuf->Map(0, m_szVBuf);
 	memcpy(ptr, &m_VertexBuffer[0], m_szVBuf);
-	vbuf->UnMap();
+	vStageBuf->UnMap();
+
+	stageDesc.Size = m_szIBuf;
+	rhi::IGpuResource* iStageBuf = m_pDevice->NewGpuResource(stageDesc);
+	ptr = iStageBuf->Map(0, m_szIBuf);
+	memcpy(ptr, &m_IndexBuffer[0], m_szIBuf);
+	iStageBuf->UnMap();
+
+	rhi::ResourceDesc bufferDesc;
+	bufferDesc.ViewType = rhi::EGpuMemViewType::EGVT_VBV;
+	bufferDesc.Size = m_szVBuf;
+	bufferDesc.CreationFlag = rhi::EGpuResourceCreationFlag::EGRCF_TransferDst;
+	bufferDesc.Flag = rhi::EGpuResourceAccessFlag::EGRAF_DeviceVisible;
+	vbuf = m_pDevice->NewGpuResource(bufferDesc);
+	bufferDesc.ViewType = rhi::EGpuMemViewType::EGVT_IBV;
+	bufferDesc.Size = m_szIBuf;
+	ibuf = m_pDevice->NewGpuResource(bufferDesc);
+
+	auto cmd = m_pDevice->NewCommandContext(rhi::ECMD_Graphics);
+	rhi::BufferRegion region = {0,0, m_szVBuf};
+	DynArray<rhi::BufferRegion> regions;
+	regions.Append(region);
+	cmd->Begin();
+	cmd->CopyBuffer(*vbuf, *vStageBuf, regions);
+	regions[0].CopySize = m_szIBuf;
+	cmd->CopyBuffer(*ibuf, *iStageBuf, regions);
+	cmd->End();
+	cmd->Execute(true);
 
 	uint64 vboLoc = vbuf->GetResourceLocation();
-
-	desc.ViewType = rhi::EGpuMemViewType::EGVT_IBV;
-	desc.Size = m_szIBuf;
-	ibuf = m_pDevice->NewGpuResource(desc);
-	ptr = ibuf->Map(0, m_szIBuf);
-	memcpy(ptr, &m_IndexBuffer[0], m_szIBuf);
-	ibuf->UnMap();
-
 	uint64 iboLoc = ibuf->GetResourceLocation();
 
 	SetLoc(iboLoc, vboLoc);
@@ -165,20 +188,15 @@ VkTriangleUnitTest::compile(const char * shaderPath, rhi::EShaderType const & ty
 	auto pDevice = m_RenderContext.GetDevice();
 	ShaderCompilerOption vertOpt = { type, "", "main" };
 	IShaderCompiler * pCompiler = pDevice->NewShaderCompiler();
-	File file;
-	if (!file.Open(shaderPath, IOFlag::IORead))
+	
+	IAsset * shaderFile = AssetManager::Open(shaderPath);
+	if (!shaderFile)
 	{
 		Log::Out(LogLevel::Fatal, "VkTriangle", "Error opening %s.", shaderPath);
 		return nullptr;
 	}
-	char * shSrc = new char[file.GetSize() + 1];
-	shSrc[file.GetSize()] = 0;
-	file.Read(shSrc, file.GetSize());
 
-	IShaderCompilerOutput * shader = pCompiler->Compile(vertOpt, shSrc);
-	file.Close();
-	delete shSrc;
-	return shader;
+	return pCompiler->Compile(vertOpt, (const char*)shaderFile->GetBuffer());;
 }
 
 void VkTriangleUnitTest::PrepareResource()
@@ -188,6 +206,7 @@ void VkTriangleUnitTest::PrepareResource()
 
 	auto pDevice = m_RenderContext.GetDevice();
 	rhi::ResourceDesc desc;
+	desc.Flag = rhi::EGpuResourceAccessFlag::EGRAF_HostVisible;
 	desc.ViewType = rhi::EGpuMemViewType::EGVT_CBV;
 	desc.Size = sizeof(ConstantBuffer);
 	m_HostBuffer.projectionMatrix = Perspective(60.0f, (float)1920 / (float)1080, 0.1f, 256.0f);
@@ -205,11 +224,12 @@ void VkTriangleUnitTest::PrepareResource()
 void VkTriangleUnitTest::PreparePipeline()
 {
 	auto pDevice = m_RenderContext.GetDevice();
-	IShaderCompilerOutput * vertSh = compile("../../Data/Test/triangle.vert", rhi::ES_Vertex);
-	IShaderCompilerOutput * fragSh = compile("../../Data/Test/triangle.frag", rhi::ES_Fragment);
+	IShaderCompilerOutput * vertSh = compile("asset://Test/triangle.vert", rhi::ES_Vertex);
+	IShaderCompilerOutput * fragSh = compile("asset://Test/triangle.frag", rhi::ES_Fragment);
 	rhi::PipelineLayoutDesc ppldesc = vertSh->GetBindingTable();
 	m_pl = pDevice->NewPipelineLayout(ppldesc);
-	
+	rhi::IDescriptor * descriptor = m_pl->GetDescriptorSet();
+	descriptor->Update(0, m_ConstBuffer);
 	/*File _file;
 	_file.Open("../../Data/Test/triangle.vert.spv", IOWrite);
 	_file.Write(vertSh->GetShaderBytes(), vertSh->GetByteCount());
@@ -226,8 +246,6 @@ void VkTriangleUnitTest::PreparePipeline()
 	desc.VertexLayout.Append(m_TriMesh->GetVertDec()[0]).Append(m_TriMesh->GetVertDec()[1]);
 	m_pPso = pDevice->NewPipelineState(desc, m_pl, rhi::EPSO_Graphics);
 
-	rhi::IDescriptor * descriptor = m_pl->GetDescriptorSet();
-	descriptor->Update(0, m_ConstBuffer);
 }
 
 void VkTriangleUnitTest::PrepareCommandBuffer()
@@ -240,13 +258,13 @@ void VkTriangleUnitTest::PrepareCommandBuffer()
 		auto gfxCmd = pDevice->NewCommandContext(rhi::ECMD_Graphics);
 		gfxCmd->Begin();
 		gfxCmd->SetPipelineLayout(m_pl);
-		gfxCmd->SetPipelineState(0, m_pPso);
-		//Vec4f clearColor = {0.0f,0.0f,0.0f,1.0f};
-		//gfxCmd->ClearColorBuffer(pRT->GetBackBuffer(), clearColor);
+		Vec4f clearColor = {0.0f,0.0f,0.0f,1.0f};
+		gfxCmd->ClearColorBuffer(pRT->GetBackBuffer(), clearColor);
 		rhi::Rect rect{ 0,0,1920,1080 };
 		gfxCmd->SetRenderTarget(pRT);
 		gfxCmd->SetScissorRects(1, &rect);
 		gfxCmd->SetViewport(rhi::ViewportDesc(1920, 1080));
+		gfxCmd->SetPipelineState(0, m_pPso);
 		gfxCmd->SetIndexBuffer(m_TriMesh->IBO());
 		gfxCmd->SetVertexBuffer(0, m_TriMesh->VBO());
 		gfxCmd->DrawIndexedInstanced(rhi::DrawIndexedInstancedParam(3, 1));
@@ -276,6 +294,6 @@ void VkTriangleUnitTest::OnProcess(Message& msg)
 {
 	KLOG(Info, VkTriangleUnitTest, __K3D_FUNC__);
 	m_Viewport->PrepareNextFrame();
-	m_PostCmd[m_Viewport->GetSwapChainIndex()]->Execute(false);
+	m_PostCmd[m_Viewport->GetSwapChainIndex()]->Execute(true);
 	m_Cmds[m_Viewport->GetSwapChainIndex()]->PresentInViewport(m_Viewport);
 }

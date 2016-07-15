@@ -478,7 +478,7 @@ public:
 	void Initialize();
 
 	void Detach(rhi::IDevice *) override;
-	void CopyBuffer(rhi::IGpuResource& Dest, rhi::IGpuResource& Src) override;
+	void CopyBuffer(rhi::IGpuResource& Dest, rhi::IGpuResource& Src, ::k3d::DynArray<rhi::BufferRegion> const& Regions) override;
 	void Execute(bool Wait) override;
 	void Reset()override;
 
