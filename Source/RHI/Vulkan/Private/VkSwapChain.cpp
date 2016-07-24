@@ -24,8 +24,9 @@ void SwapChain::Initialize(void * WindowHandle, rhi::GfxSetting & gfxSetting)
 	m_SwapchainExtent = { gfxSetting.Width, gfxSetting.Height };
 	VkSurfaceCapabilitiesKHR surfProperties;
 	K3D_VK_VERIFY(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(GetPhysicalDevice(), m_Surface, &surfProperties));
-	//m_SwapchainExtent = surfProperties.currentExtent;
-	// !! cannot changed here
+	m_SwapchainExtent = surfProperties.currentExtent;
+	/*gfxSetting.Width = m_SwapchainExtent.width;
+	gfxSetting.Height = m_SwapchainExtent.height;*/
 	uint32 desiredNumBuffers = kMath::Clamp(
 		gfxSetting.BackBufferCount, 
 		surfProperties.minImageCount, 

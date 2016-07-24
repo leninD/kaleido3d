@@ -105,7 +105,7 @@ void RenderViewport::AllocateRenderTargets(rhi::GfxSetting & gfxSetting)
 		image.imageType = VK_IMAGE_TYPE_2D;
 		image.format = depthFormat;
 		// Use example's height and width
-		image.extent = { gfxSetting.Width, gfxSetting.Height, 1 };
+		image.extent = { GetWidth(), GetHeight(), 1 };
 		image.mipLevels = 1;
 		image.arrayLayers = 1;
 		image.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -172,8 +172,8 @@ void RenderViewport::AllocateRenderTargets(rhi::GfxSetting & gfxSetting)
 			FrameBuffer::Attachment colorAttach(colorImageInfo.first);
 			FrameBuffer::Attachment depthAttach(depthView);
 			FrameBuffer::Option op;
-			op.Width = gfxSetting.Width;
-			op.Height = gfxSetting.Height;
+			op.Width = GetWidth();
+			op.Height = GetHeight();
 			op.Attachments.push_back(colorAttach);
 			op.Attachments.push_back(depthAttach);
 			auto framebuffer = SpFramebuffer(new FrameBuffer(GetDevice(), m_RenderPass->GetPass(), op));

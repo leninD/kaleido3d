@@ -18,7 +18,7 @@ namespace rhi
 		virtual uint64				GetResourceLocation() const	{ return 0; }
 		virtual EResourceState		GetUsageState() const		{ return ERS_Unknown; }
 		virtual EGpuResourceType	GetResourceType() const		{ return ResourceTypeNum; }
-		virtual uint64				GetResourceSize() const		{ return 0; }
+		virtual uint64				GetResourceSize() const = 0;
 	};
 
 	struct IDescriptor
@@ -184,6 +184,9 @@ namespace rhi
 
 		virtual uint32				GetSwapChainCount() = 0;
 		virtual uint32				GetSwapChainIndex() = 0;
+
+		virtual uint32				GetWidth() const = 0;
+		virtual uint32				GetHeight() const = 0;
 	};
 
 	/*

@@ -330,7 +330,7 @@ public:
 
 	Resource::Ptr				Map(uint64 offset, uint64 size) override;
 	void						UnMap() override {	vkUnmapMemory(GetRawDevice(), m_DeviceMem); }
-
+	uint64						GetResourceSize() const override { return m_Size; }
 protected:
 	VkMemoryAllocateInfo		m_MemAllocInfo;
 	VkDeviceMemory				m_DeviceMem;
@@ -676,6 +676,8 @@ public:
 	VkSwapchainKHR							GetSwapChain() const { return m_SwapChain; }
 	VkImage									GetBackImage(uint32 i) const { return m_ColorImages[i]; }
 
+	VkExtent2D								GetCurrentExtent() const { return m_SwapchainExtent; }
+
 private:
 	void									InitSurface(void * WindowHandle);
 	VkPresentModeKHR						ChoosePresentMode();
@@ -684,7 +686,7 @@ private:
 	void									InitSwapChain(uint32 numBuffers, std::pair<VkFormat, VkColorSpaceKHR> color, VkPresentModeKHR mode, VkSurfaceTransformFlagBitsKHR pretran);
 
 private:
-	VkExtent2D								m_SwapchainExtent;
+	VkExtent2D								m_SwapchainExtent = {};
 	VkSurfaceKHR							m_Surface	= VK_NULL_HANDLE;
 	VkSwapchainKHR							m_SwapChain = VK_NULL_HANDLE;
 	uint32									m_SelectedPresentQueueFamilyIndex = 0;
@@ -733,6 +735,8 @@ public:
 	void				AllocateRenderTargets(rhi::GfxSetting & gfxSetting);
 	VkRenderPass		GetRenderPass() const;
 
+	uint32				GetWidth() const override { return m_pSwapChain->GetCurrentExtent().width; }
+	uint32				GetHeight() const override { return m_pSwapChain->GetCurrentExtent().height; }
 protected:
 
 	PtrSemaphore					m_PresentSemaphore;

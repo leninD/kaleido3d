@@ -471,7 +471,7 @@ void CommandContext::SetRenderTarget(rhi::IRenderTarget * rt)
 		RenderTarget* pRT = static_cast<RenderTarget*>(rt);
 		m_CurrentRenderTarget = pRT;
 		VkClearValue clearValues[2];
-		clearValues[0].color = { 0.0f,0.0f, 0.0f, 1.0f };
+		clearValues[0].color = { 0.0f,1.0f, 1.0f, 1.0f };
 		clearValues[1].depthStencil = { 1.0f, 0 };
 		// render pass attachments num should match that of framebuffer attachment
 		VkRenderPassBeginInfo renderPassBeginInfo = {};

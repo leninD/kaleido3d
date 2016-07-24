@@ -320,7 +320,7 @@ public:
 	void*						Map(uint64 start, uint64 size) override;
 	void						UnMap() override;
 	D3D12_GPU_VIRTUAL_ADDRESS	GetGpuVirtualAddress() const;
-
+	uint64						GetResourceSize() const override { return -1; }
 	friend class CommandContext;
 
 protected:

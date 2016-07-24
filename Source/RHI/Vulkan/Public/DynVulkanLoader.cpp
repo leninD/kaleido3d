@@ -360,6 +360,10 @@ int LoadVulkan(VkInstance instance, VkDevice device)
 #include <sstream>
 #include <iomanip>
 
+#ifndef K3DPLATFORM_OS_WIN
+#define OutputDebugStringA(a) (a)
+#endif
+
 std::string DumpSubmitInfo(VkSubmitInfo info)
 {
 	std::stringstream submitInfo;

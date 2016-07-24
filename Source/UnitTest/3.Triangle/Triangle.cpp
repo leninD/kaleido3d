@@ -210,8 +210,8 @@ void VkTriangleUnitTest::PrepareResource()
 	desc.ViewType = rhi::EGpuMemViewType::EGVT_CBV;
 	desc.Size = sizeof(ConstantBuffer);
 	m_HostBuffer.projectionMatrix = Perspective(60.0f, (float)1920 / (float)1080, 0.1f, 256.0f);
-	m_HostBuffer.viewMatrix = Translate(Vec3f(0.0f, 0.0f, -1.f), Mat4f());
-	m_HostBuffer.modelMatrix = Mat4f();
+	m_HostBuffer.viewMatrix = Translate(Vec3f(0.0f, 0.0f, -2.5f), MakeIdentityMatrix<float>());
+	m_HostBuffer.modelMatrix = MakeIdentityMatrix<float>();
 	m_HostBuffer.modelMatrix = Rotate(Vec3f(1.0f, 0.0f, 0.0f), 0.f, m_HostBuffer.modelMatrix);
 	m_HostBuffer.modelMatrix = Rotate(Vec3f(0.0f, 1.0f, 0.0f), 0.f, m_HostBuffer.modelMatrix);
 	m_HostBuffer.modelMatrix = Rotate(Vec3f(0.0f, 0.0f, 1.0f), 0.f, m_HostBuffer.modelMatrix);
@@ -258,12 +258,10 @@ void VkTriangleUnitTest::PrepareCommandBuffer()
 		auto gfxCmd = pDevice->NewCommandContext(rhi::ECMD_Graphics);
 		gfxCmd->Begin();
 		gfxCmd->SetPipelineLayout(m_pl);
-		Vec4f clearColor = {0.0f,0.0f,0.0f,1.0f};
-		gfxCmd->ClearColorBuffer(pRT->GetBackBuffer(), clearColor);
-		rhi::Rect rect{ 0,0,1920,1080 };
+		rhi::Rect rect{ 0,0, (long)m_Viewport->GetWidth(), (long)m_Viewport->GetHeight() };
 		gfxCmd->SetRenderTarget(pRT);
 		gfxCmd->SetScissorRects(1, &rect);
-		gfxCmd->SetViewport(rhi::ViewportDesc(1920, 1080));
+		gfxCmd->SetViewport(rhi::ViewportDesc(m_Viewport->GetWidth(), m_Viewport->GetHeight()));
 		gfxCmd->SetPipelineState(0, m_pPso);
 		gfxCmd->SetIndexBuffer(m_TriMesh->IBO());
 		gfxCmd->SetVertexBuffer(0, m_TriMesh->VBO());
@@ -272,7 +270,6 @@ void VkTriangleUnitTest::PrepareCommandBuffer()
 		gfxCmd->TransitionResourceBarrier(pRT->GetBackBuffer(), rhi::ERS_RenderTarget, rhi::ERS_Present);
 		gfxCmd->End();
 		m_Cmds.push_back(gfxCmd);
-
 		m_PostCmd.push_back(pDevice->NewCommandContext(rhi::ECMD_Graphics));
 		m_PostCmd[i]->Begin();
 		m_PostCmd[i]->TransitionResourceBarrier(pRT->GetBackBuffer(), rhi::ERS_Unknown, rhi::ERS_RenderTarget);
