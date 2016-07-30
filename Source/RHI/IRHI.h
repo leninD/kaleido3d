@@ -77,7 +77,9 @@ namespace rhi
 	struct IRenderTarget
 	{
 		virtual ~IRenderTarget() {}
-		virtual IGpuResource* GetBackBuffer() = 0;
+		virtual void			SetClearColor(kMath::Vec4f clrColor) = 0;
+		virtual void			SetClearDepthStencil(float depth, uint32 stencil) = 0;
+		virtual IGpuResource*	GetBackBuffer() = 0;
 	};
 
 	/**

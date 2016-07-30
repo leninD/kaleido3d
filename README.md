@@ -62,18 +62,23 @@ RHIQueues[Global]
 rhi::PipelineDesc pipelineDesc = {shaders, raster, depthStencil...};
 rhi::IPipelineState pState = device->NewPipelineState(pipelineDesc);
 
-rhi::ICommandContext cmd = CommandContext::Begin(pDevice, pQueue);
-cmd.BindPipeline(pState);
-cmd.BindDescriptorTable(pTable);
-cmd.SetRenderTarget/SetRenderPass();
-for(obj : scene)
-{
-	cmd.SetIndexBuffer(obj->ibo);
-	cmd.SetVertexBuffer(obj->vbo);
-	cmd.DrawIndex()/ExecuteCmdBuf();
-}
-cmd.End();
-cmd.FlushAndWait();
+rhi::ICommandContext* gfxCmd = CommandContext::Begin(pDevice, pQueue);
+
+		gfxCmd->Begin();
+		gfxCmd->SetPipelineLayout(m_pl);
+		rhi::Rect rect{ 0,0, (long)m_Viewport->GetWidth(), (long)m_Viewport->GetHeight() };
+		gfxCmd->SetRenderTarget(pRT);
+		gfxCmd->SetScissorRects(1, &rect);
+		gfxCmd->SetViewport(rhi::ViewportDesc(m_Viewport->GetWidth(), m_Viewport->GetHeight()));
+		gfxCmd->SetPipelineState(0, m_pPso);
+		gfxCmd->SetIndexBuffer(m_TriMesh->IBO());
+		gfxCmd->SetVertexBuffer(0, m_TriMesh->VBO());
+		gfxCmd->DrawIndexedInstanced(rhi::DrawIndexedInstancedParam(3, 1));
+		gfxCmd->EndRendering();
+		gfxCmd->TransitionResourceBarrier(pRT->GetBackBuffer(), rhi::ERS_RenderTarget, rhi::ERS_Present);
+		gfxCmd->End();
+		
+gfxCmd->FlushAndWait();
 
 --
 
@@ -111,6 +116,14 @@ Directories:
 	
 ----------
 
+Samples:
+=======
+
+## 1.Triangle
+
+![Triangle Screenshot](Document/images/sample_triangle.png)
+
+---
 
 Contact
 =========

@@ -526,15 +526,21 @@ public:
 	RenderTarget(Device::Ptr pDevice, SpTexture texture, SpFramebuffer framebuffer, VkRenderPass renderpass);
 	~RenderTarget() override;
 
-	VkFramebuffer GetFramebuffer() const;
-	VkRenderPass GetRenderpass() const;
-	SpTexture	GetTexture() const;
+	VkFramebuffer		GetFramebuffer() const;
+	VkRenderPass		GetRenderpass() const;
+	SpTexture			GetTexture() const;
+	VkRect2D			GetRenderArea() const;
+	rhi::IGpuResource*	GetBackBuffer() override;
+	PtrSemaphore		GetSemaphore() { return m_AcquireSemaphore; }
 
-	VkRect2D		GetRenderArea() const;
+	void				SetClearColor(kMath::Vec4f clrColor) override { m_ClearValues[0].color = { clrColor[0], clrColor[1], clrColor[2], clrColor[3] }; }
+	void				SetClearDepthStencil(float depth, uint32 stencil) override { m_ClearValues[1].depthStencil = {depth, stencil}; }
 
-	rhi::IGpuResource* GetBackBuffer() override;
-	PtrSemaphore	GetSemaphore() { return m_AcquireSemaphore; }
 private:
+	friend class	CommandContext;
+
+	VkClearValue	m_ClearValues[2] = { {}, {1.0f, 0} };
+
 	SpFramebuffer	m_Framebuffer;
 	VkRenderPass	m_Renderpass;
 	SpTexture		m_RenderTexture;
@@ -677,6 +683,7 @@ public:
 	VkImage									GetBackImage(uint32 i) const { return m_ColorImages[i]; }
 
 	VkExtent2D								GetCurrentExtent() const { return m_SwapchainExtent; }
+	VkFormat								GetFormat() const { return m_ColorAttachFmt; }
 
 private:
 	void									InitSurface(void * WindowHandle);
@@ -692,6 +699,7 @@ private:
 	uint32									m_SelectedPresentQueueFamilyIndex = 0;
 	uint32									m_ReserveBackBufferCount;
 	std::vector<VkImage>					m_ColorImages;
+	VkFormat								m_ColorAttachFmt = VK_FORMAT_UNDEFINED;
 
 private:
 

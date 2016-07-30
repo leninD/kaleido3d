@@ -394,7 +394,7 @@ void CommandContext::SetViewport(const rhi::ViewportDesc & viewport)
 void RHIRect2VkRect(const rhi::Rect & rect, VkRect2D & r2d)
 {
 	r2d.extent.width = rect.Right - rect.Left;
-	r2d.extent.width = rect.Bottom - rect.Top;
+	r2d.extent.height = rect.Bottom - rect.Top;
 	r2d.offset.x = rect.Left;
 	r2d.offset.y = rect.Top;
 }
@@ -470,17 +470,14 @@ void CommandContext::SetRenderTarget(rhi::IRenderTarget * rt)
 	{
 		RenderTarget* pRT = static_cast<RenderTarget*>(rt);
 		m_CurrentRenderTarget = pRT;
-		VkClearValue clearValues[2];
-		clearValues[0].color = { 0.0f,1.0f, 1.0f, 1.0f };
-		clearValues[1].depthStencil = { 1.0f, 0 };
 		// render pass attachments num should match that of framebuffer attachment
 		VkRenderPassBeginInfo renderPassBeginInfo = {};
 		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassBeginInfo.pNext = NULL;
 		renderPassBeginInfo.renderPass = pRT->GetRenderpass();
 		renderPassBeginInfo.renderArea = pRT->GetRenderArea();
+		renderPassBeginInfo.pClearValues = pRT->m_ClearValues;
 		renderPassBeginInfo.clearValueCount = 2;
-		renderPassBeginInfo.pClearValues = clearValues;
 		renderPassBeginInfo.framebuffer = pRT->GetFramebuffer();
 		BeginRenderPass(&renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 

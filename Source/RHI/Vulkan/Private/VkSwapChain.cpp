@@ -42,7 +42,7 @@ void SwapChain::Initialize(void * WindowHandle, rhi::GfxSetting & gfxSetting)
 	K3D_VK_VERIFY(fpGetSwapchainImagesKHR(GetRawDevice(), m_SwapChain, &numSwapChainImages, nullptr));
 	m_ColorImages.resize(numSwapChainImages);
 	K3D_VK_VERIFY(fpGetSwapchainImagesKHR(GetRawDevice(), m_SwapChain, &numSwapChainImages, m_ColorImages.data()));
-	VKLOG(Info, "[%s] num images = %d.", __K3D_FUNC__, numSwapChainImages);
+	VKLOG(Info, "[SwapChain::Initialize] num images = %d.", numSwapChainImages);
 }
 
 uint32 SwapChain::AcquireNextImage(PtrSemaphore presentSemaphore, PtrFence pFence)
@@ -59,6 +59,7 @@ uint32 SwapChain::AcquireNextImage(PtrSemaphore presentSemaphore, PtrFence pFenc
 		break;
 	case VK_ERROR_OUT_OF_DATE_KHR:
 		//OnWindowSizeChanged();
+		VKLOG(Info, "Swapchain need update");
 	default:
 		break;
 	}
@@ -160,6 +161,7 @@ void SwapChain::InitSwapChain(uint32 numBuffers, std::pair<VkFormat, VkColorSpac
 	swapchainCI.surface = m_Surface;
 	swapchainCI.minImageCount = numBuffers;
 	swapchainCI.imageFormat = color.first;
+	m_ColorAttachFmt = color.first;
 	swapchainCI.imageColorSpace = color.second;
 	swapchainCI.imageExtent = m_SwapchainExtent;
 	swapchainCI.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -173,6 +175,7 @@ void SwapChain::InitSwapChain(uint32 numBuffers, std::pair<VkFormat, VkColorSpac
 	swapchainCI.clipped = true;
 	swapchainCI.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	K3D_VK_VERIFY(fpCreateSwapchainKHR(GetRawDevice(), &swapchainCI, nullptr, &m_SwapChain));
+	VKLOG(Info, "Init Swapchain with ColorFmt(%d)", m_ColorAttachFmt);
 }
 
 void SwapChain::Destroy()

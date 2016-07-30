@@ -9,7 +9,7 @@ K3D_VK_BEGIN
 Resource::Ptr Resource::Map(uint64 offset, uint64 size)
 {
 	Resource::Ptr ptr;
-	K3D_VK_VERIFY(vkMapMemory(GetRawDevice(), m_DeviceMem, offset, size, 0, &ptr));
+	K3D_VK_VERIFY(vkMapMemory(GetRawDevice(), m_DeviceMem, m_AllocationOffset+offset, size, 0, &ptr));
 	return ptr;
 }
 
@@ -83,6 +83,10 @@ void Buffer::Create(size_t size)
 	m_AllocationOffset = alloc.Offset;
 	m_AllocationSize = alloc.Size;
 	m_Size = size;
+
+	VKLOG(Info, "Buffer reqSize:(%d) allocated:(%d) offset:(%d) address:(0x%0x).",
+		  m_Size, m_AllocationSize, m_AllocationOffset, m_DeviceMem);
+
 	m_BufferInfo.buffer = m_Buffer;
 	m_BufferInfo.offset = 0;
 	m_BufferInfo.range = m_Size;
@@ -215,6 +219,7 @@ ResourceManager::Pool<VkObject>::Create(VkDevice device, const VkDeviceSize pool
 	allocInfo.memoryTypeIndex = memoryTypeIndex;
 	VkDeviceMemory memory = VK_NULL_HANDLE;
 	VkResult res = vkAllocateMemory(device, &allocInfo, nullptr, &memory);
+	VKLOG(Info,"%s alloca size=%ld", __K3D_FUNC__, poolSize);
 	if (VK_SUCCESS == res) {
 		result = std::unique_ptr< ResourceManager::Pool<VkObject> >(new ResourceManager::Pool<VkObject>(memoryTypeIndex, memory, poolSize));
 	}
@@ -228,7 +233,7 @@ bool ResourceManager::Pool<VkObjectT>::HasAvailable(VkMemoryRequirements memReqs
 #ifdef min
 #undef min
 #endif
-
+	VKLOG(Info,"%s alignedOffset=%ld", __K3D_FUNC__, alignedOffst);
 	VkDeviceSize remaining = m_Size - std::min(alignedOffst, m_Size);
 	return memReqs.size <= remaining;
 }

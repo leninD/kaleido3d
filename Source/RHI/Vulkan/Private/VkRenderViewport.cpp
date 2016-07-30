@@ -68,12 +68,11 @@ uint32 RenderViewport::GetSwapChainCount()
 void RenderViewport::AllocateDefaultRenderPass(rhi::GfxSetting & gfxSetting)
 {
 	VKRHI_METHOD_TRACE
-	VkFormat colorformat = g_FormatTable[gfxSetting.ColorFormat];
+	VkFormat colorformat = m_pSwapChain ? m_pSwapChain->GetFormat() : g_FormatTable[gfxSetting.ColorFormat];
 	RenderpassAttachment colorAttach = RenderpassAttachment::CreateColor(colorformat);
 	colorAttach.GetDescription()
 		.InitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		.FinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
 	RenderpassOptions option;
 	option.AddAttachment(colorAttach);
 	Subpass subpass_;
@@ -98,7 +97,6 @@ void RenderViewport::AllocateRenderTargets(rhi::GfxSetting & gfxSetting)
 	if (m_RenderPass)
 	{
 		VkFormat depthFormat = g_FormatTable[gfxSetting.DepthStencilFormat];
-
 		VkImage depthImage;
 		VkImageCreateInfo image = {};
 		image.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -160,6 +158,12 @@ void RenderViewport::AllocateRenderTargets(rhi::GfxSetting & gfxSetting)
 			VkImage colorImage = m_pSwapChain->GetBackImage(i);
 			auto colorImageInfo = ImageViewInfo::CreateColorImageView(GetRawDevice(), colorFmt, colorImage);
 			VKLOG(Info, "swapchain imageView created . (0x%0x).", colorImageInfo.first);
+			colorImageInfo.second.components = {
+				VK_COMPONENT_SWIZZLE_R,
+				VK_COMPONENT_SWIZZLE_G,
+				VK_COMPONENT_SWIZZLE_B,
+				VK_COMPONENT_SWIZZLE_A
+			};
 			auto colorTex = Texture::CreateFromSwapChain(colorImage, colorImageInfo.first, colorImageInfo.second, GetDevice());
 			
 			//vkTools::setImageLayout(
