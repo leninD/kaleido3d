@@ -151,7 +151,7 @@ public:
 
 	PtrCmdAlloc					NewCommandAllocator(bool transient);
 	PtrSemaphore				NewSemaphore();
-
+	void						WaitIdle() override { vkDeviceWaitIdle(m_Device); }
 
 	bool						FindMemoryType(uint32_t typeBits, VkFlags requirementsMask, uint32 *typeIndex) const;
 

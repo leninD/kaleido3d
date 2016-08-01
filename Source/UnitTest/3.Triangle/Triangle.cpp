@@ -159,6 +159,8 @@ void TriangleMesh::Upload()
 	cmd->End();
 	cmd->Execute(true);
 
+	m_pDevice->WaitIdle();
+
 	uint64 vboLoc = vbuf->GetResourceLocation();
 	uint64 iboLoc = ibuf->GetResourceLocation();
 
@@ -219,6 +221,8 @@ void VkTriangleUnitTest::PrepareResource()
 	void * ptr = m_ConstBuffer->Map(0, sizeof(ConstantBuffer));
 	memcpy(ptr, &m_HostBuffer, sizeof(ConstantBuffer));
 	m_ConstBuffer->UnMap();
+	pDevice->WaitIdle();
+
 }
 
 void VkTriangleUnitTest::PreparePipeline()

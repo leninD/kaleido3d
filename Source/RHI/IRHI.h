@@ -162,6 +162,7 @@ namespace rhi
 		virtual IRenderViewport *			NewRenderViewport(void * winHandle, GfxSetting &) = 0;
 		virtual IRenderTarget *				NewRenderTarget(RenderTargetLayout const&) = 0;
 		virtual ::k3d::IShaderCompiler *	NewShaderCompiler() = 0;
+		virtual void						WaitIdle() {}
 	};
 
 	struct K3D_API IRenderViewport
