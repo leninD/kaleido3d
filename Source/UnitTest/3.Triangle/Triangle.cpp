@@ -32,6 +32,8 @@ public:
 	void OnDestroy() override;
 	void OnProcess(Message & msg) override;
 
+	void OnUpdate() override;
+
 protected:
 	IShaderCompilerOutput * compile(const char *shaderPath, rhi::EShaderType const& type);
 
@@ -158,25 +160,24 @@ void TriangleMesh::Upload()
 	cmd->CopyBuffer(*ibuf, *iStageBuf, regions);
 	cmd->End();
 	cmd->Execute(true);
-
-	m_pDevice->WaitIdle();
-
+//	m_pDevice->WaitIdle();
 	uint64 vboLoc = vbuf->GetResourceLocation();
 	uint64 iboLoc = ibuf->GetResourceLocation();
-
 	SetLoc(iboLoc, vboLoc);
-
 	KLOG(Info, TriangleMesh, "finish buffer upload..");
 }
 
 
 bool VkTriangleUnitTest::OnInit()
 {
-	while(!App::OnInit());
+	bool inited = App::OnInit();
+	if(!inited)
+		return inited;
 	m_RenderContext.Init(RHIType::ERTVulkan);
 	m_RenderContext.Attach(HostWindow());
 	m_Viewport = m_RenderContext.GetViewport();
 
+	KLOG(Info, Test, __K3D_FUNC__);
 	PrepareResource();
 	PreparePipeline();
 	PrepareCommandBuffer();
@@ -203,6 +204,7 @@ VkTriangleUnitTest::compile(const char * shaderPath, rhi::EShaderType const & ty
 
 void VkTriangleUnitTest::PrepareResource()
 {
+	KLOG(Info, Test, __K3D_FUNC__);
 	m_TriMesh = std::make_unique<TriangleMesh>(m_RenderContext.GetDevice());
 	m_TriMesh->Upload();
 
@@ -211,18 +213,9 @@ void VkTriangleUnitTest::PrepareResource()
 	desc.Flag = rhi::EGpuResourceAccessFlag::EGRAF_HostVisible;
 	desc.ViewType = rhi::EGpuMemViewType::EGVT_CBV;
 	desc.Size = sizeof(ConstantBuffer);
-	m_HostBuffer.projectionMatrix = Perspective(60.0f, (float)1920 / (float)1080, 0.1f, 256.0f);
-	m_HostBuffer.viewMatrix = Translate(Vec3f(0.0f, 0.0f, -2.5f), MakeIdentityMatrix<float>());
-	m_HostBuffer.modelMatrix = MakeIdentityMatrix<float>();
-	m_HostBuffer.modelMatrix = Rotate(Vec3f(1.0f, 0.0f, 0.0f), 0.f, m_HostBuffer.modelMatrix);
-	m_HostBuffer.modelMatrix = Rotate(Vec3f(0.0f, 1.0f, 0.0f), 0.f, m_HostBuffer.modelMatrix);
-	m_HostBuffer.modelMatrix = Rotate(Vec3f(0.0f, 0.0f, 1.0f), 0.f, m_HostBuffer.modelMatrix);
 	m_ConstBuffer = pDevice->NewGpuResource(desc);
-	void * ptr = m_ConstBuffer->Map(0, sizeof(ConstantBuffer));
-	memcpy(ptr, &m_HostBuffer, sizeof(ConstantBuffer));
-	m_ConstBuffer->UnMap();
-	pDevice->WaitIdle();
-
+	OnUpdate();
+//	pDevice->WaitIdle(); TOFIX: this may cause crash on Android N
 }
 
 void VkTriangleUnitTest::PreparePipeline()
@@ -234,16 +227,7 @@ void VkTriangleUnitTest::PreparePipeline()
 	m_pl = pDevice->NewPipelineLayout(ppldesc);
 	rhi::IDescriptor * descriptor = m_pl->GetDescriptorSet();
 	descriptor->Update(0, m_ConstBuffer);
-	/*File _file;
-	_file.Open("../../Data/Test/triangle.vert.spv", IOWrite);
-	_file.Write(vertSh->GetShaderBytes(), vertSh->GetByteCount());
-	_file.Close();
-	File _file2;
-	_file2.Open("../../Data/Test/triangle.frag.spv", IOWrite);
-	_file2.Write(fragSh->GetShaderBytes(), fragSh->GetByteCount());
-	_file2.Close();*/
 	auto attrib = vertSh->GetAttributes();
-
 	rhi::PipelineDesc desc;
 	desc.Shaders[rhi::ES_Vertex] = vertSh->GetByteCode();
 	desc.Shaders[rhi::ES_Fragment] = fragSh->GetByteCode();
@@ -297,4 +281,17 @@ void VkTriangleUnitTest::OnProcess(Message& msg)
 	m_Viewport->PrepareNextFrame();
 	m_PostCmd[m_Viewport->GetSwapChainIndex()]->Execute(true);
 	m_Cmds[m_Viewport->GetSwapChainIndex()]->PresentInViewport(m_Viewport);
+}
+
+void VkTriangleUnitTest::OnUpdate()
+{
+	m_HostBuffer.projectionMatrix = Perspective(60.0f, (float)1920 / (float)1080, 0.1f, 256.0f);
+	m_HostBuffer.viewMatrix = Translate(Vec3f(0.0f, 0.0f, -2.5f), MakeIdentityMatrix<float>());
+	m_HostBuffer.modelMatrix = MakeIdentityMatrix<float>();
+	m_HostBuffer.modelMatrix = Rotate(Vec3f(1.0f, 0.0f, 0.0f), 0.f, m_HostBuffer.modelMatrix);
+	m_HostBuffer.modelMatrix = Rotate(Vec3f(0.0f, 1.0f, 0.0f), 0.f, m_HostBuffer.modelMatrix);
+	m_HostBuffer.modelMatrix = Rotate(Vec3f(0.0f, 0.0f, 1.0f), 0.f, m_HostBuffer.modelMatrix);
+	void * ptr = m_ConstBuffer->Map(0, sizeof(ConstantBuffer));
+	memcpy(ptr, &m_HostBuffer, sizeof(ConstantBuffer));
+	m_ConstBuffer->UnMap();
 }

@@ -78,32 +78,17 @@ namespace k3d {
 #elif K3DPLATFORM_OS_ANDROID
 	public:
 
-		struct android_poll_source {
-			// The identifier of this source.  May be LOOPER_ID_MAIN or
-			// LOOPER_ID_INPUT.
-			int32_t id;
-
-			// The android_app this ident is associated with.
-			App* app;
-
-			// Function to call to perform the standard processing of data from
-			// this source.
-			void (*process)(App* app, android_poll_source* source);
-		};
-
 		void* userData;
-		void (*onAppCmd)(App* app, int32_t cmd);
+		void (*onAppCmd)(App* app, int32_t cmd) = nullptr;
 
 		int32_t (*onInputEvent)(App* app, AInputEvent* event);
-
-
 
 		ANativeActivity* 	m_Activity;
 		AConfiguration* 	m_Config;
 		void*				m_SavedState;
 		size_t 				m_SavedStateSize;
 		ALooper* 			m_Looper;
-		AInputQueue* 		m_InputQueue;
+		AInputQueue* 		m_InputQueue = nullptr;
 
 		//ANativeWindow* window;
 		ARect contentRect;
@@ -115,24 +100,23 @@ namespace k3d {
 		int 			m_MsgRead;
 		int 			m_MsgWrite;
 
-		android_poll_source cmdPollSource;
-		android_poll_source inputPollSource;
 
 		int 			m_IsRunning;
 		int stateSaved;
 		int destroyed;
 		int redrawNeeded;
-		AInputQueue*	m_PendingInputQueue;
-		ANativeWindow*	m_PendingWindow;
+		AInputQueue*	m_PendingInputQueue = nullptr;
+		ANativeWindow*	m_PendingWindow = nullptr;
 		ARect pendingContentRect;
 
 		void 			WriteCmd(int8_t cmd);
 		int8_t 			ReadCmd();
 
+		void 			SetInputQueue(AInputQueue * queue);
 		void 			ProcessCmd();
 		void 			PreExecCmd(int8_t cmd);
 		void 			PostExecCmd(int8_t cmd);
-		void ProcessInput(Message &msg);
+		void 			ProcessInput(Message &msg);
 
 		static void 	OnStart(ANativeActivity* activity);
 		static void 	OnDestroyed(ANativeActivity * nativeActivity);

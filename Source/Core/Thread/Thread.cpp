@@ -94,6 +94,7 @@ namespace Concurrency {
 			pthread_attr_init(&attr);
 			pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 			pthread_create((pthread_t*)&m_ThreadHandle, nullptr, Run, this);
+			pthread_setname_np((pthread_t)m_ThreadHandle, m_ThreadName.c_str());
 		}
 #endif
 	}
