@@ -3,6 +3,7 @@
 #include "VkUtils.h"
 #include "VkEnums.h"
 
+#include <sstream>
 #include <iomanip>
 
 K3D_VK_BEGIN
