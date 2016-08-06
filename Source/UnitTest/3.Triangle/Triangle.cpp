@@ -279,7 +279,7 @@ void VkTriangleUnitTest::OnProcess(Message& msg)
 {
 	KLOG(Info, VkTriangleUnitTest, __K3D_FUNC__);
 	m_Viewport->PrepareNextFrame();
-	m_PostCmd[m_Viewport->GetSwapChainIndex()]->Execute(true);
+	m_PostCmd[m_Viewport->GetSwapChainIndex()]->Execute(false);
 	m_Cmds[m_Viewport->GetSwapChainIndex()]->PresentInViewport(m_Viewport);
 }
 

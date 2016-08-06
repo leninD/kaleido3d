@@ -3,6 +3,9 @@
 #include "VkEnums.h"
 #include "VkUtils.h"
 
+#include <iostream>
+#include <iomanip>
+
 K3D_VK_BEGIN
 
 RenderViewport::RenderViewport(
@@ -15,9 +18,9 @@ RenderViewport::RenderViewport(
 	, m_CurFrameId(0)
 {
 	m_pSwapChain->Initialize(windowHandle, setting);
-	VKLOG(Info, "RenderViewport-Initialized: width(%d), height(%d), swapImage num(%d).",
-		setting.Width, setting.Height, setting.BackBufferCount);
 	m_NumBufferCount = m_pSwapChain->GetBackBufferCount();
+	VKLOG(Info, "RenderViewport-Initialized: width(%d), height(%d), swapImage num(%d).",
+		  setting.Width, setting.Height, m_NumBufferCount);
 	m_PresentSemaphore = GetDevice()->NewSemaphore();
 	m_RenderSemaphore = GetDevice()->NewSemaphore();
 	RHIRoot::AddViewport(this);
@@ -39,13 +42,17 @@ void RenderViewport::PrepareNextFrame()
 {
 	VKRHI_METHOD_TRACE
 	m_CurFrameId = m_pSwapChain->AcquireNextImage(m_PresentSemaphore, nullptr);
-	VKLOG(Info, "Current Frame Id = %d. acquiring (0x%0x)", m_CurFrameId, m_PresentSemaphore->GetNativeHandle());
+	std::stringstream stream;
+	stream << "Current Frame Id = " << m_CurFrameId << " acquiring " << std::hex << std::setfill('0') << m_PresentSemaphore->GetNativeHandle();
+	VKLOG(Info, stream.str().c_str());
 }
 
 bool RenderViewport::Present(bool vSync)
 {
 	VKRHI_METHOD_TRACE
-	VKLOG(Info, "present ----- renderSemaphore (0x%0x)", m_RenderSemaphore->GetNativeHandle());
+	std::stringstream stream;
+	stream << "present ----- renderSemaphore " << std::hex << std::setfill('0') << m_RenderSemaphore->GetNativeHandle();
+	VKLOG(Info, stream.str().c_str());
 	VkResult result = m_pSwapChain->Present(m_CurFrameId, m_RenderSemaphore);
 	return result==VK_SUCCESS;
 }

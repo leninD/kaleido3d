@@ -3,6 +3,8 @@
 #include "VkUtils.h"
 #include "VkEnums.h"
 
+#include <iomanip>
+
 K3D_VK_BEGIN
 
 using namespace Concurrency;
@@ -172,7 +174,10 @@ void CommandContext::SubmitAndWait(PtrSemaphore wait, PtrSemaphore signal, PtrFe
 	submitInfo.pCommandBuffers = &m_CommandBuffer;
 	submitInfo.signalSemaphoreCount = signal? 1:0 ;
 	submitInfo.pSignalSemaphores = &signalSemaphore;
-	VKLOG(Info, "submit ----- wait (0x%0x), signal (0x%0x)", waitSemaphore, signalSemaphore);
+	std::stringstream strream;
+	strream << "submit ----- wait " << std::hex << std::setfill('0') << waitSemaphore << ", signal " << std::hex
+		<< std::setfill('0') << signalSemaphore;
+	VKLOG(Info, strream.str().c_str());
 	GetImmCmdQueue()->Submit({ submitInfo }, fence ? fence->m_Fence : VK_NULL_HANDLE);
 }
 

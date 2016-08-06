@@ -697,6 +697,7 @@ private:
 	VkSurfaceKHR							m_Surface	= VK_NULL_HANDLE;
 	VkSwapchainKHR							m_SwapChain = VK_NULL_HANDLE;
 	uint32									m_SelectedPresentQueueFamilyIndex = 0;
+	uint32 									m_DesiredBackBufferCount;
 	uint32									m_ReserveBackBufferCount;
 	std::vector<VkImage>					m_ColorImages;
 	VkFormat								m_ColorAttachFmt = VK_FORMAT_UNDEFINED;

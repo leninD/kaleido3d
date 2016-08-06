@@ -31,18 +31,13 @@ void SwapChain::Initialize(void * WindowHandle, rhi::GfxSetting & gfxSetting)
 		gfxSetting.BackBufferCount, 
 		surfProperties.minImageCount, 
 		surfProperties.maxImageCount);
-	gfxSetting.BackBufferCount = desiredNumBuffers;
-	m_ReserveBackBufferCount = desiredNumBuffers;
-	InitSwapChain(
-		m_ReserveBackBufferCount,
-		chosenFormat, 
-		swapchainPresentMode, 
-		surfProperties.currentTransform);
-	uint32 numSwapChainImages;
-	K3D_VK_VERIFY(fpGetSwapchainImagesKHR(GetRawDevice(), m_SwapChain, &numSwapChainImages, nullptr));
-	m_ColorImages.resize(numSwapChainImages);
-	K3D_VK_VERIFY(fpGetSwapchainImagesKHR(GetRawDevice(), m_SwapChain, &numSwapChainImages, m_ColorImages.data()));
-	VKLOG(Info, "[SwapChain::Initialize] num images = %d.", numSwapChainImages);
+	m_DesiredBackBufferCount = desiredNumBuffers;
+	InitSwapChain(m_DesiredBackBufferCount, chosenFormat, swapchainPresentMode, surfProperties.currentTransform);
+	K3D_VK_VERIFY(fpGetSwapchainImagesKHR(GetRawDevice(), m_SwapChain, &m_ReserveBackBufferCount, nullptr));
+	m_ColorImages.resize(m_ReserveBackBufferCount);
+	K3D_VK_VERIFY(fpGetSwapchainImagesKHR(GetRawDevice(), m_SwapChain, &m_ReserveBackBufferCount, m_ColorImages.data()));
+	gfxSetting.BackBufferCount = m_ReserveBackBufferCount;
+	VKLOG(Info, "[SwapChain::Initialize] desired imageCount=%d, reserved imageCount = %d.", m_DesiredBackBufferCount, m_ReserveBackBufferCount);
 }
 
 uint32 SwapChain::AcquireNextImage(PtrSemaphore presentSemaphore, PtrFence pFence)

@@ -360,8 +360,9 @@ int LoadVulkan(VkInstance instance, VkDevice device)
 #include <sstream>
 #include <iomanip>
 
-#ifndef K3DPLATFORM_OS_WIN
-#define OutputDebugStringA(a) (a)
+#ifdef K3DPLATFORM_OS_ANDROID
+#include <android/log.h>
+#define OutputDebugStringA(a) __android_log_print(ANDROID_LOG_INFO, "vkdebug", a)
 #endif
 
 std::string DumpSubmitInfo(VkSubmitInfo info)
